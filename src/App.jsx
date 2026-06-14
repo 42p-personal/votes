@@ -273,12 +273,77 @@ function SpinWheel({ nominations, onWinner, onClose }) {
   );
 }
 
+// ─── Deadline helpers ─────────────────────────────────────────
+function fmtCountdown(ms) {
+  if (ms <= 0) return 'closed';
+  var s = Math.floor(ms / 1000);
+  var d = Math.floor(s / 86400); s -= d * 86400;
+  var h = Math.floor(s / 3600);  s -= h * 3600;
+  var m = Math.floor(s / 60);
+  if (d > 0) return d + 'd ' + h + 'h';
+  if (h > 0) return h + 'h ' + m + 'm';
+  if (m > 0) return m + 'm';
+  return '<1m';
+}
+
+function DeadlineModal({ current, onSet, onClose }) {
+  var presets = [
+    { label: 'In 24 hours', hours: 24 },
+    { label: 'In 3 days',   hours: 72 },
+    { label: 'In 1 week',   hours: 168 },
+  ];
+  return (
+    <div onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+      <div onClick={function(e) { e.stopPropagation(); }}
+        style={{ background: '#1a1b22', border: '0.5px solid #3b1f6e', borderRadius: 18, padding: '1.5rem', width: '100%', maxWidth: 380, boxShadow: '0 24px 80px rgba(124,58,237,0.3)' }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800, color: '#f5f3ff' }}>Voting deadline</h2>
+        <p style={{ margin: '0 0 18px', fontSize: 13, color: '#8b8ca8' }}>Voting locks automatically when the deadline passes.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {presets.map(function(p) {
+            return (
+              <button key={p.hours} onClick={function() { onSet(new Date(Date.now() + p.hours * 3600 * 1000).toISOString()); }}
+                style={{ padding: '11px 14px', borderRadius: 10, border: '0.5px solid #2a2b36', background: '#111116', color: '#e8e9f3', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>
+                {p.label}
+              </button>
+            );
+          })}
+          {current && (
+            <button onClick={function() { onSet(null); }}
+              style={{ padding: '11px 14px', borderRadius: 10, border: '0.5px solid #ff555533', background: 'transparent', color: '#ff7070', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>
+              Clear deadline
+            </button>
+          )}
+        </div>
+        <button onClick={onClose}
+          style={{ marginTop: 14, width: '100%', padding: '10px', borderRadius: 10, border: '0.5px solid #2a2b36', background: 'transparent', color: '#8b8ca8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+// A compact pill showing deadline / closed / winner state.
+function DeadlinePill({ closed, winner, deadlineMs }) {
+  if (winner) {
+    return <span style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24', display: 'inline-flex', alignItems: 'center', gap: 5 }}><i className="ti ti-trophy" />{winner.name}</span>;
+  }
+  if (closed) {
+    return <span style={{ fontSize: 12, fontWeight: 700, color: '#8b8ca8', display: 'inline-flex', alignItems: 'center', gap: 5 }}><i className="ti ti-flag-check" />Voting closed</span>;
+  }
+  if (deadlineMs != null) {
+    var soon = deadlineMs < 24 * 3600 * 1000;
+    return <span style={{ fontSize: 12, fontWeight: 700, color: soon ? '#fbbf24' : '#a5b4fc', display: 'inline-flex', alignItems: 'center', gap: 5 }}><i className="ti ti-clock-hour-4" />Closes in {fmtCountdown(deadlineMs)}</span>;
+  }
+  return null;
+}
+
 // ─── Nomination card ─────────────────────────────────────────
-function NomCard({ nom, myUserId, totalVotes, onVote, onRemove, votingId }) {
+function NomCard({ nom, myUserId, totalVotes, onVote, onRemove, votingId, closed }) {
   var hasVoted  = nom.voters && nom.voters.includes(myUserId);
   var pct       = totalVotes > 0 ? Math.round((nom.voteCount / totalVotes) * 100) : 0;
   var isVoting  = votingId === nom.id;
   var canRemove = nom.nominatedBy === myUserId;
+  var disabled  = isVoting || closed;
   var [imgErr,  setImgErr] = useState(false);
 
   return (
@@ -319,8 +384,8 @@ function NomCard({ nom, myUserId, totalVotes, onVote, onRemove, votingId }) {
           <span style={{ fontSize: 12, color: hasVoted ? '#a5b4fc' : '#52536a', fontWeight: 600 }}>
             {nom.voteCount} {nom.voteCount === 1 ? 'vote' : 'votes'} {totalVotes > 0 && '· ' + pct + '%'}
           </span>
-          <button onClick={function() { onVote(nom.id); }} disabled={isVoting}
-            style={{ padding: '5px 14px', borderRadius: 8, border: hasVoted ? '0.5px solid #6366f1' : '0.5px solid #3a3a52', background: hasVoted ? '#6366f120' : 'transparent', color: hasVoted ? '#a5b4fc' : '#6b6b7a', cursor: isVoting ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
+          <button onClick={function() { if (!disabled) onVote(nom.id); }} disabled={disabled}
+            style={{ padding: '5px 14px', borderRadius: 8, border: hasVoted ? '0.5px solid #6366f1' : '0.5px solid #3a3a52', background: hasVoted ? '#6366f120' : 'transparent', color: hasVoted ? '#a5b4fc' : '#6b6b7a', cursor: disabled ? 'not-allowed' : 'pointer', opacity: closed && !hasVoted ? 0.5 : 1, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
             {isVoting
               ? <i className="ti ti-loader" style={{ animation: 'spin 1s linear infinite' }} />
               : hasVoted
@@ -457,12 +522,20 @@ export default function App() {
 
   var [showNominate, setShowNominate] = useState(false);
   var [showWheel,    setShowWheel]    = useState(false);
+  var [showDeadline, setShowDeadline] = useState(false);
+  var [now,          setNow]          = useState(function() { return Date.now(); });
   var [isMobile,     setIsMobile]     = useState(function() { return window.innerWidth < 768; });
 
   useEffect(function() {
     function onResize() { setIsMobile(window.innerWidth < 768); }
     window.addEventListener('resize', onResize);
     return function() { window.removeEventListener('resize', onResize); };
+  }, []);
+
+  // Tick once a minute so the deadline countdown stays live.
+  useEffect(function() {
+    var t = setInterval(function() { setNow(Date.now()); }, 30000);
+    return function() { clearInterval(t); };
   }, []);
 
   // Derived: find tied nominations (all with same max vote count, ≥1 vote)
@@ -473,6 +546,11 @@ export default function App() {
   var totalVotes  = nominations.reduce(function(s, n) { return s + n.voteCount; }, 0);
   var nominatedIds = new Set(nominations.map(function(n) { return n.steamId; }).filter(Boolean));
   var myUserId     = user && (user.userId || user.id);
+
+  // Deadline / closed / winner state
+  var deadlineMs   = (round && round.closesAt) ? (new Date(round.closesAt).getTime() - now) : null;
+  var votingClosed = !!(round && round.status === 'closed') || (deadlineMs != null && deadlineMs <= 0);
+  var winner       = (votingClosed && maxVotes > 0 && !isTied) ? sortedNoms[0] : null;
 
   // Bootstrap
   useEffect(function() {
@@ -562,6 +640,15 @@ export default function App() {
     } catch (err) { setToast('Failed to start new round'); }
   }
 
+  async function handleSetDeadline(closesAt) {
+    setShowDeadline(false);
+    try {
+      var r = await apiFetch('PUT', '/api/votes/round/deadline', { closesAt: closesAt }, currentGuild.id);
+      setRound(r);
+      setToast(closesAt ? 'Deadline set' : 'Deadline cleared');
+    } catch (err) { setToast('Failed: ' + err.message); }
+  }
+
   // ── Screen guards ────────────────────────────────────────────
   if (screen === 'loading') return (
     <div style={{ minHeight: '100dvh', background: '#0f1015', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#8b8ca8' }}>
@@ -587,6 +674,7 @@ export default function App() {
 
         {toast && <Toast message={toast} onDone={function() { setToast(null); }} />}
         {showWheel && <SpinWheel nominations={tiedNoms} onWinner={function(w) { setToast('🏆 ' + w.name + ' wins!'); }} onClose={function() { setShowWheel(false); }} />}
+        {showDeadline && <DeadlineModal current={round && round.closesAt} onSet={handleSetDeadline} onClose={function() { setShowDeadline(false); }} />}
         {showNominate && (
           <NominateModal guildId={currentGuild.id} nominatedIds={nominatedIds}
             onNominate={async function(game) { await handleNominate(game); }}
@@ -622,21 +710,37 @@ export default function App() {
         </header>
 
         {/* Mobile sub-header */}
-        <div style={{ background: '#111116', borderBottom: '0.5px solid #2a2b36', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 12, color: '#8b8ca8' }}>
-            {loading ? 'Loading…' : nominations.length + ' nominations · ' + totalVotes + ' votes'}
+        <div style={{ background: '#111116', borderBottom: '0.5px solid #2a2b36', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ fontSize: 12, color: '#8b8ca8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {loading ? 'Loading…' : nominations.length + ' noms · ' + totalVotes + ' votes'}
+            </div>
+            {(deadlineMs != null || votingClosed) && <DeadlinePill closed={votingClosed} winner={winner} deadlineMs={deadlineMs} />}
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            {!votingClosed && (
+              <button onClick={function() { setShowDeadline(true); }} title="Voting deadline"
+                style={{ padding: '6px 10px', borderRadius: 8, border: '0.5px solid #2a2b36', background: 'transparent', color: '#8b8ca8', fontSize: 13, cursor: 'pointer' }}>
+                <i className="ti ti-clock-hour-4" />
+              </button>
+            )}
             {isTied && (
               <button onClick={function() { setShowWheel(true); }}
                 style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#7c3aed)', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
-                🎯 Tie-Breaker!
+                🎯 Tie!
               </button>
             )}
-            <button onClick={function() { setShowNominate(true); }}
-              style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <i className="ti ti-plus" />Nominate
-            </button>
+            {votingClosed ? (
+              <button onClick={handleNewRound}
+                style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <i className="ti ti-refresh" />New round
+              </button>
+            ) : (
+              <button onClick={function() { setShowNominate(true); }}
+                style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <i className="ti ti-plus" />Nominate
+              </button>
+            )}
           </div>
         </div>
 
@@ -653,8 +757,8 @@ export default function App() {
               {sortedNoms.map(function(nom) {
                 var myVote = nom.voters.includes(myUserId);
                 return (
-                  <NomCard key={nom.id} nom={nom} myVote={myVote} votingId={votingId}
-                    onVote={handleVote} onRemove={handleRemoveNom} myUserId={myUserId} />
+                  <NomCard key={nom.id} nom={nom} myVote={myVote} votingId={votingId} totalVotes={totalVotes}
+                    onVote={handleVote} onRemove={handleRemoveNom} myUserId={myUserId} closed={votingClosed} />
                 );
               })}
             </div>
@@ -675,6 +779,7 @@ export default function App() {
 
       {toast && <Toast message={toast} onDone={function() { setToast(null); }} />}
       {showWheel && <SpinWheel nominations={tiedNoms} onWinner={function(w) { setToast('🏆 ' + w.name + ' wins!'); }} onClose={function() { setShowWheel(false); }} />}
+      {showDeadline && <DeadlineModal current={round && round.closesAt} onSet={handleSetDeadline} onClose={function() { setShowDeadline(false); }} />}
       {showNominate && (
         <NominateModal guildId={currentGuild.id} nominatedIds={nominatedIds}
           onNominate={async function(game) { await handleNominate(game); }}
@@ -726,21 +831,31 @@ export default function App() {
           <span style={{ fontSize: 12, color: '#52536a' }}>
             {nominations.length} nomination{nominations.length !== 1 ? 's' : ''} · {totalVotes} vote{totalVotes !== 1 ? 's' : ''}
           </span>
+          {(deadlineMs != null || votingClosed) && <DeadlinePill closed={votingClosed} winner={winner} deadlineMs={deadlineMs} />}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          {!votingClosed && (
+            <button onClick={function() { setShowDeadline(true); }}
+              title="Set voting deadline"
+              style={{ padding: '7px 12px', borderRadius: 9, border: '0.5px solid ' + (round && round.closesAt ? '#6366f155' : '#2a2b36'), background: round && round.closesAt ? '#6366f115' : 'transparent', color: round && round.closesAt ? '#a5b4fc' : '#8b8ca8', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <i className="ti ti-clock-hour-4" />{round && round.closesAt ? 'Deadline' : 'Set deadline'}
+            </button>
+          )}
           {isTied && (
             <button onClick={function() { setShowWheel(true); }}
               style={{ padding: '7px 14px', borderRadius: 9, border: '0.5px solid #a855f7', background: '#a855f715', color: '#c084fc', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, animation: 'fadeIn 0.3s ease' }}>
               <i className="ti ti-wheel" />Tie-Breaker!
             </button>
           )}
-          <button onClick={function() { setShowNominate(true); }}
-            style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: '#6366f1', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <i className="ti ti-plus" />Nominate
-          </button>
+          {!votingClosed && (
+            <button onClick={function() { setShowNominate(true); }}
+              style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: '#6366f1', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <i className="ti ti-plus" />Nominate
+            </button>
+          )}
           <button onClick={handleNewRound}
             title="Start a fresh round"
-            style={{ padding: '7px 12px', borderRadius: 9, border: '0.5px solid #2a2b36', background: 'transparent', color: '#52536a', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+            style={{ padding: '7px 12px', borderRadius: 9, border: votingClosed ? 'none' : '0.5px solid #2a2b36', background: votingClosed ? '#6366f1' : 'transparent', color: votingClosed ? '#fff' : '#52536a', fontSize: 12, fontWeight: votingClosed ? 700 : 400, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
             <i className="ti ti-refresh" />New round
           </button>
         </div>
@@ -756,6 +871,19 @@ export default function App() {
           <EmptyNominations onNominate={function() { setShowNominate(true); }} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {votingClosed && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 12, background: winner ? 'linear-gradient(135deg,#fbbf2415,#6366f115)' : '#1a1b22', border: '0.5px solid ' + (winner ? '#fbbf2455' : '#2a2b36'), marginBottom: 4 }}>
+                <i className={winner ? 'ti ti-trophy' : 'ti ti-flag-check'} style={{ fontSize: 22, color: winner ? '#fbbf24' : '#8b8ca8' }} />
+                <div>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#f5f3ff' }}>
+                    {winner ? winner.name + ' wins!' : isTied ? 'It’s a tie — spin the wheel!' : 'Voting closed'}
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#8b8ca8' }}>
+                    {winner ? 'The squad voted — add it to the calendar.' : 'Start a new round to vote again.'}
+                  </p>
+                </div>
+              </div>
+            )}
             {sortedNoms.map(function(nom, idx) {
               return (
                 <div key={nom.id} style={{ display: 'flex', alignItems: 'stretch', gap: 10 }}>
@@ -767,7 +895,7 @@ export default function App() {
                   </div>
                   <div style={{ flex: 1 }}>
                     <NomCard nom={nom} myUserId={myUserId} totalVotes={totalVotes}
-                      onVote={handleVote} onRemove={handleRemoveNom} votingId={votingId} />
+                      onVote={handleVote} onRemove={handleRemoveNom} votingId={votingId} closed={votingClosed} />
                   </div>
                 </div>
               );
