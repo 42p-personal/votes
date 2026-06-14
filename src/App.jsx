@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 const API_URL   = import.meta.env.VITE_API_URL ?? '';
 const GUILD_KEY = 'dc_vote_guild';
-const GAMES_URL = 'https://games.42p.uk';
+const GAMES_URL    = 'https://games.42p.uk';
+const CALENDAR_URL = 'https://calendar.42p.uk';
 
 const WHEEL_COLORS = ['#6366f1','#7c3aed','#a855f7','#8b5cf6','#4f46e5','#9333ea','#c026d3','#5b21b6'];
 
@@ -456,6 +457,13 @@ export default function App() {
 
   var [showNominate, setShowNominate] = useState(false);
   var [showWheel,    setShowWheel]    = useState(false);
+  var [isMobile,     setIsMobile]     = useState(function() { return window.innerWidth < 768; });
+
+  useEffect(function() {
+    function onResize() { setIsMobile(window.innerWidth < 768); }
+    window.addEventListener('resize', onResize);
+    return function() { window.removeEventListener('resize', onResize); };
+  }, []);
 
   // Derived: find tied nominations (all with same max vote count, ≥1 vote)
   var sortedNoms  = nominations.slice().sort(function(a, b) { return b.voteCount - a.voteCount; });
@@ -567,6 +575,95 @@ export default function App() {
       onSelect={function(g) { setNominations([]); setRound(null); loadForGuild(g); }} />
   );
 
+  // ── Mobile votes page ────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div style={{ minHeight: '100dvh', background: '#0f1015', display: 'flex', flexDirection: 'column', color: '#e8e9f3', fontFamily: 'system-ui,-apple-system,sans-serif' }}>
+        <style>{`
+          @keyframes spin    { from{transform:rotate(0deg);}  to{transform:rotate(360deg);} }
+          @keyframes fadeIn  { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
+          @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(12px);} to{opacity:1;transform:translateX(-50%) translateY(0);} }
+        `}</style>
+
+        {toast && <Toast message={toast} onDone={function() { setToast(null); }} />}
+        {showWheel && <SpinWheel nominations={tiedNoms} onWinner={function(w) { setToast('🏆 ' + w.name + ' wins!'); }} onClose={function() { setShowWheel(false); }} />}
+        {showNominate && (
+          <NominateModal guildId={currentGuild.id} nominatedIds={nominatedIds}
+            onNominate={async function(game) { await handleNominate(game); }}
+            onClose={function() { setShowNominate(false); }} />
+        )}
+
+        {/* Mobile header */}
+        <header style={{ background: '#111116', borderBottom: '0.5px solid #2a2b36', padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: 6, position: 'sticky', top: 0, zIndex: 50 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Logo42p size={28} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#f5f3ff', letterSpacing: '-0.02em' }}>42p Votes</p>
+              <p style={{ margin: 0, fontSize: 9, color: '#6b6b7a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentGuild ? currentGuild.name : ''}</p>
+            </div>
+            <button onClick={loadGuilds}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, border: '0.5px solid #2a2b36', background: 'transparent', cursor: 'pointer', color: '#8b8ca8', fontSize: 11 }}>
+              <i className="ti ti-chevron-down" style={{ fontSize: 11 }} />Switch
+            </button>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#6366f1', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+              {user && (user.name && user.name[0].toUpperCase())}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <a href={CALENDAR_URL} target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: 11, fontWeight: 600, color: '#8b8ca8', textDecoration: 'none', padding: '3px 8px', borderRadius: 6, border: '0.5px solid #2a2b36' }}>
+              📅 Calendar
+            </a>
+            <a href={GAMES_URL} target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: 11, fontWeight: 600, color: '#8b8ca8', textDecoration: 'none', padding: '3px 8px', borderRadius: 6, border: '0.5px solid #2a2b36' }}>
+              🎮 Games
+            </a>
+          </div>
+        </header>
+
+        {/* Mobile sub-header */}
+        <div style={{ background: '#111116', borderBottom: '0.5px solid #2a2b36', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 12, color: '#8b8ca8' }}>
+            {loading ? 'Loading…' : nominations.length + ' nominations · ' + totalVotes + ' votes'}
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {isTied && (
+              <button onClick={function() { setShowWheel(true); }}
+                style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#7c3aed)', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
+                🎯 Tie-Breaker!
+              </button>
+            )}
+            <button onClick={function() { setShowNominate(true); }}
+              style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <i className="ti ti-plus" />Nominate
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile nominations list */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 12px 24px' }}>
+          {loading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: 10, color: '#8b8ca8' }}>
+              <i className="ti ti-loader" style={{ fontSize: 24, animation: 'spin 1s linear infinite', color: '#6366f1' }} /> Loading…
+            </div>
+          ) : nominations.length === 0 ? (
+            <EmptyNominations onNominate={function() { setShowNominate(true); }} />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {sortedNoms.map(function(nom) {
+                var myVote = nom.voters.includes(myUserId);
+                return (
+                  <NomCard key={nom.id} nom={nom} myVote={myVote} votingId={votingId}
+                    onVote={handleVote} onRemove={handleRemoveNom} myUserId={myUserId} />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // ── Main votes page ──────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: '#0f1015', display: 'flex', flexDirection: 'column', color: '#e8e9f3', fontFamily: 'system-ui,-apple-system,sans-serif' }}>
@@ -602,6 +699,9 @@ export default function App() {
             <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentGuild && currentGuild.name}</span>
             <i className="ti ti-chevron-down" style={{ fontSize: 11 }} />
           </button>
+          <a href={CALENDAR_URL} style={{ padding: '7px 14px', borderRadius: 9, border: '0.5px solid #2a2b36', background: 'transparent', color: '#8b8ca8', fontSize: 12, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <i className="ti ti-calendar-event" style={{ fontSize: 14 }} />Calendar
+          </a>
           <a href={GAMES_URL} style={{ padding: '7px 14px', borderRadius: 9, border: '0.5px solid #2a2b36', background: 'transparent', color: '#8b8ca8', fontSize: 12, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="ti ti-device-gamepad-2" style={{ fontSize: 14 }} />Games
           </a>
