@@ -70,7 +70,7 @@ function AuthScreen() {
     if (p.get('auth_error')) { window.history.replaceState({}, '', window.location.pathname); setError('Discord sign-in failed. Please try again.'); }
   }, []);
   return (
-    <div style={{ minHeight: '100vh', background: 'radial-gradient(ellipse at 60% 20%, #2e1065 0%, #0f1015 60%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }}>
+    <div style={{ minHeight: '100dvh', background: 'radial-gradient(ellipse at 60% 20%, #2e1065 0%, #0f1015 60%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }}>
       <div style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
         <div style={{ display: 'inline-block', marginBottom: 20 }}><Logo42p size={64} /></div>
         <h1 style={{ fontSize: 26, fontWeight: 900, color: '#f5f3ff', margin: '0 0 6px', letterSpacing: '-0.03em' }}>42p Votes</h1>
@@ -84,7 +84,7 @@ function AuthScreen() {
           </button>
           {error && <p style={{ fontSize: 13, color: '#f87171', marginTop: 14 }}>{error}</p>}
         </div>
-        <a href={GAMES_URL} style={{ display: 'inline-block', marginTop: 20, fontSize: 12, color: '#6b6b7a', textDecoration: 'none' }}>← Back to 42p Games</a>
+        <a href="https://42p.uk" style={{ display: 'inline-block', marginTop: 20, fontSize: 12, color: '#6b6b7a', textDecoration: 'none' }}>← Back to 42p</a>
       </div>
       <style>{`@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}`}</style>
     </div>
@@ -94,13 +94,13 @@ function AuthScreen() {
 // ─── Guild picker ─────────────────────────────────────────────
 function GuildPicker({ guilds, loading, error, onSelect }) {
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#0f1015', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#8b8ca8' }}>
+    <div style={{ minHeight: '100dvh', background: '#0f1015', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#8b8ca8' }}>
       <i className="ti ti-loader" style={{ fontSize: 20, color: '#6366f1', animation: 'spin 1s linear infinite' }} />
       <style>{`@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}`}</style>
     </div>
   );
   return (
-    <div style={{ minHeight: '100vh', background: 'radial-gradient(ellipse at 60% 20%, #2e1065 0%, #0f1015 60%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }}>
+    <div style={{ minHeight: '100dvh', background: 'radial-gradient(ellipse at 60% 20%, #2e1065 0%, #0f1015 60%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }}>
       <div style={{ width: '100%', maxWidth: 500 }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ display: 'inline-block', marginBottom: 16 }}><Logo42p size={56} /></div>
@@ -564,7 +564,7 @@ export default function App() {
 
   // ── Screen guards ────────────────────────────────────────────
   if (screen === 'loading') return (
-    <div style={{ minHeight: '100vh', background: '#0f1015', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#8b8ca8' }}>
+    <div style={{ minHeight: '100dvh', background: '#0f1015', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#8b8ca8' }}>
       <i className="ti ti-loader" style={{ fontSize: 20, color: '#6366f1', animation: 'spin 1s linear infinite' }} />
       <style>{`@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}`}</style>
     </div>
@@ -596,7 +596,7 @@ export default function App() {
         {/* Mobile header */}
         <header style={{ background: '#111116', borderBottom: '0.5px solid #2a2b36', padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: 6, position: 'sticky', top: 0, zIndex: 50 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Logo42p size={28} />
+            <a href="https://42p.uk" style={{ display: 'flex', flexShrink: 0 }}><Logo42p size={28} /></a>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#f5f3ff', letterSpacing: '-0.02em' }}>42p Votes</p>
               <p style={{ margin: 0, fontSize: 9, color: '#6b6b7a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentGuild ? currentGuild.name : ''}</p>
@@ -666,7 +666,7 @@ export default function App() {
 
   // ── Main votes page ──────────────────────────────────────────
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1015', display: 'flex', flexDirection: 'column', color: '#e8e9f3', fontFamily: 'system-ui,-apple-system,sans-serif' }}>
+    <div style={{ minHeight: '100dvh', background: '#0f1015', display: 'flex', flexDirection: 'column', color: '#e8e9f3', fontFamily: 'system-ui,-apple-system,sans-serif' }}>
       <style>{`
         @keyframes spin    { from{transform:rotate(0deg);}  to{transform:rotate(360deg);} }
         @keyframes fadeIn  { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
@@ -684,7 +684,7 @@ export default function App() {
       {/* Header */}
       <header style={{ background: '#111116', borderBottom: '0.5px solid #2a2b36', padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Logo42p size={34} />
+          <a href="https://42p.uk" style={{ display: 'flex', flexShrink: 0 }}><Logo42p size={34} /></a>
           <div>
             <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#f5f3ff', letterSpacing: '-0.02em' }}>42p Votes</p>
             <p style={{ margin: 0, fontSize: 10, color: '#6b6b7a' }}>Next game to play</p>
